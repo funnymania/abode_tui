@@ -1,12 +1,15 @@
 extern crate abode;
+extern crate tui;
 
 mod header;
 
 use abode::init;
 use std::env;
-use std::fs;
-use std::io::Read;
-use std::io::Write;
+use std::io;
+use tui::backend::CrosstermBackend;
+use tui::layout::{Constraint, Direction, Layout};
+use tui::widgets::{Block, Borders, Widget};
+use tui::Terminal;
 
 use abode::files::FileError;
 use abode::files::FileState;
@@ -15,17 +18,49 @@ use abode::network::Network;
 use abode::server::Server;
 use header::Header;
 
-fn main() {
+fn main() -> Result<(), io::Error> {
     println!("Your humble Abode.");
 
     let args = read_args();
+
+    // Time between ticks
+    let tick_rate: u64 = 250;
+    // Whether unicode symbols are used
+    let enhanced_graphics = true;
+
+    let mut stdout = io::stdout();
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    // Clear screen.
+    terminal.clear();
+
+    // Static screen1
+    terminal.draw(|f| {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(1)
+            .constraints(
+                [
+                    Constraint::Percentage(10),
+                    Constraint::Percentage(80),
+                    Constraint::Percentage(10),
+                ]
+                .as_ref(),
+            )
+            .split(f.size());
+        let block = Block::default().title("Your Abode").borders(Borders::ALL);
+        f.render_widget(block, chunks[0]);
+        let block = Block::default().title("Loot").borders(Borders::ALL);
+        f.render_widget(block, chunks[1]);
+    })?;
 
     // Load networks
     let mut networks_status = init::get_file_status("");
 
     // Printout and start server
     if args.len() == 1 {
-        printout_networks(&mut networks_status);
+        // printout_networks(&mut networks_status);
     }
 
     if args.len() > 1 {
@@ -82,6 +117,8 @@ fn main() {
             }
         }
     }
+
+    Ok(())
 }
 
 // fn send_file_to_all_devices(networks_status: &mut FileState) {
