@@ -7,6 +7,9 @@ pub struct Header {
 
 impl Header {
     pub fn new() -> Header {
+        // hi.you must be IN your abode, therefore, we must first ESTABLISH where the abode is
+        // going to be!
+        // Then we can look for the header therein.
         let file_path = format!("{}/src/hi.you", env!("CARGO_MANIFEST_DIR"));
         let mut file = fs::OpenOptions::new()
             .create(true)
