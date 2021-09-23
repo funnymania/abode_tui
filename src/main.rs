@@ -1,11 +1,18 @@
 extern crate abode;
 extern crate tui;
 
+mod app;
 mod header;
 
 use abode::init;
-use std::env;
-use std::io;
+use std::{
+    env,
+    error::Error,
+    io,
+    sync::mpsc,
+    thread,
+    time::{Duration, Instant},
+};
 use tui::backend::CrosstermBackend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::widgets::{Block, Borders, Widget};
@@ -18,7 +25,17 @@ use abode::network::Network;
 use abode::server::Server;
 use header::Header;
 
-fn main() -> Result<(), io::Error> {
+use crate::app::App;
+
+enum Event<I> {
+    Input(I),
+    Tick,
+}
+
+// ISSUE: How do we pull in Keycodes? (I suggest what we are using for arranges)
+// ISSUE: Event handling
+
+fn main() -> Result<(), Box<dyn Error>> {
     println!("Your humble Abode.");
 
     let args = read_args();
@@ -27,33 +44,90 @@ fn main() -> Result<(), io::Error> {
     let tick_rate: u64 = 250;
     // Whether unicode symbols are used
     let enhanced_graphics = true;
+    // Do we quit?
+    let should_quit = false;
 
     let mut stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    let mut app = App::new("Abode Demo", enhanced_graphics);
+
     // Clear screen.
-    terminal.clear();
+    terminal.clear()?;
+
+    let (tx, rx) = mpsc::channel();
+
+    // Don't understand rn
+    let tick_rate = Duration::from_millis(tick_rate);
+    thread::spawn(move || {
+        let mut last_tick = Instant::now();
+        loop {
+            // poll for tick rate duration, if no events, sent tick event.
+            let timeout = tick_rate
+                .checked_sub(last_tick.elapsed())
+                .unwrap_or_else(|| Duration::from_secs(0));
+            if event::poll(timeout).unwrap() {
+                if let CEvent::Key(key) = event::read().unwrap() {
+                    tx.send(Event::Input(key)).unwrap();
+                }
+            }
+            if last_tick.elapsed() >= tick_rate {
+                tx.send(Event::Tick).unwrap();
+                last_tick = Instant::now();
+            }
+        }
+    });
 
     // Static screen1
-    terminal.draw(|f| {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(1)
-            .constraints(
-                [
-                    Constraint::Percentage(10),
-                    Constraint::Percentage(80),
-                    Constraint::Percentage(10),
-                ]
-                .as_ref(),
-            )
-            .split(f.size());
-        let block = Block::default().title("Your Abode").borders(Borders::ALL);
-        f.render_widget(block, chunks[0]);
-        let block = Block::default().title("Loot").borders(Borders::ALL);
-        f.render_widget(block, chunks[1]);
-    })?;
+    loop {
+        terminal.draw(|f| {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(1)
+                .constraints(
+                    [
+                        Constraint::Percentage(10),
+                        Constraint::Percentage(80),
+                        Constraint::Percentage(10),
+                    ]
+                    .as_ref(),
+                )
+                .split(f.size());
+            let block = Block::default().title("Your Abode").borders(Borders::ALL);
+            f.render_widget(block, chunks[0]);
+            let block = Block::default().title("Loot").borders(Borders::ALL);
+            f.render_widget(block, chunks[1]);
+        })?;
+
+        match rx.recv()? {
+            Event::Input(event) => match event.code {
+                // KeyCode::Char('q') => {
+                //     disable_raw_mode()?;
+                //     execute!(
+                //         terminal.backend_mut(),
+                //         LeaveAlternateScreen,
+                //         DisableMouseCapture
+                //     )?;
+                //     terminal.show_cursor()?;
+                //     break;
+                // }
+                // KeyCode::Char(c) => app.on_key(c),
+                // KeyCode::Left => app.on_left(),
+                // KeyCode::Up => app.on_up(),
+                // KeyCode::Right => app.on_right(),
+                // KeyCode::Down => app.on_down(),
+                _ => {}
+            },
+            Event::Tick => {
+                break;
+            }
+        }
+
+        if should_quit {
+            break;
+        }
+    }
 
     // Load networks
     let mut networks_status = init::get_file_status("");
