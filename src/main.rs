@@ -5,6 +5,7 @@ mod app;
 mod header;
 
 use abode::init;
+use keycode::{KeyMap, KeyMappingId};
 use std::{
     env,
     error::Error,
@@ -17,6 +18,7 @@ use tui::backend::CrosstermBackend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::widgets::{Block, Borders, Widget};
 use tui::Terminal;
+use tui::List;
 
 use abode::files::FileError;
 use abode::files::FileState;
@@ -51,35 +53,59 @@ fn main() -> Result<(), Box<dyn Error>> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::new("Abode Demo", enhanced_graphics);
-
     // Clear screen.
     terminal.clear()?;
 
     let (tx, rx) = mpsc::channel();
 
-    // Don't understand rn
-    let tick_rate = Duration::from_millis(tick_rate);
-    thread::spawn(move || {
-        let mut last_tick = Instant::now();
-        loop {
-            // poll for tick rate duration, if no events, sent tick event.
-            let timeout = tick_rate
-                .checked_sub(last_tick.elapsed())
-                .unwrap_or_else(|| Duration::from_secs(0));
-            if event::poll(timeout).unwrap() {
-                if let CEvent::Key(key) = event::read().unwrap() {
-                    tx.send(Event::Input(key)).unwrap();
-                }
-            }
-            if last_tick.elapsed() >= tick_rate {
-                tx.send(Event::Tick).unwrap();
-                last_tick = Instant::now();
+    // Load networks
+    let mut networks_status = init::get_file_status("");
+    let mut all_networks = Vec::new();
+    match networks_status {
+        FileStatus::Ok(nets) => {
+            for network in nets.iter() {
+                // println!("Network");
+                // println!("{} - {}", network.id(), network.name());
+                // println!("Peer Devices");
+                // if network.members().len() == 0 {
+                //     println!("None");
+                // }
+
+                // for device in network.members() {
+                //     println!("{}", device.id());
+                // }
+               all_networks.push(network); 
             }
         }
-    });
+        FileStatus::Err(fe) => match fe {
+            FileError::Other(msg) => panic!("{:?}", msg),
+        },
+    };
 
-    // Static screen1
+    let mut app = App::new("Abode Demo", enhanced_graphics, all_networks);
+
+    // Don't understand rn
+    // let tick_rate = Duration::from_millis(tick_rate);
+    // thread::spawn(move || {
+    //     let mut last_tick = Instant::now();
+    //     loop {
+    //         // poll for tick rate duration, if no events, sent tick event.
+    //         let timeout = tick_rate
+    //             .checked_sub(last_tick.elapsed())
+    //             .unwrap_or_else(|| Duration::from_secs(0));
+    //         if event::poll(timeout).unwrap() {
+    //             if let CEvent::Key(key) = event::read().unwrap() {
+    //                 tx.send(Event::Input(key)).unwrap();
+    //             }
+    //         }
+    //         if last_tick.elapsed() >= tick_rate {
+    //             tx.send(Event::Tick).unwrap();
+    //             last_tick = Instant::now();
+    //         }
+    //     }
+    // });
+
+    // Static screen
     loop {
         terminal.draw(|f| {
             let chunks = Layout::default()
@@ -96,22 +122,28 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .split(f.size());
             let block = Block::default().title("Your Abode").borders(Borders::ALL);
             f.render_widget(block, chunks[0]);
-            let block = Block::default().title("Loot").borders(Borders::ALL);
-            f.render_widget(block, chunks[1]);
+
+            // Fill with networks
+            let list = app.list().block(Block::default().title("Loot").borders(Borders::ALL)
+                .style(Style::default().fg(Color::White))
+                .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
+                .highlist_symbol(">>");
+            f.render_widget(list, chunks[1]);
         })?;
 
         match rx.recv()? {
-            Event::Input(event) => match event.code {
-                // KeyCode::Char('q') => {
-                //     disable_raw_mode()?;
-                //     execute!(
-                //         terminal.backend_mut(),
-                //         LeaveAlternateScreen,
-                //         DisableMouseCapture
-                //     )?;
-                //     terminal.show_cursor()?;
-                //     break;
-                // }
+            Event::Input(event) => match event {
+                KeyMap::from(KeyMappingId::UsJ) -> {
+                    app.move_up()
+                    // disable_raw_mode()?;
+                    // execute!(
+                    //     terminal.backend_mut(),
+                    //     LeaveAlternateScreen,
+                    //     DisableMouseCapture
+                    // )?;
+                    // terminal.show_cursor()?;
+                    // break;
+                }
                 // KeyCode::Char(c) => app.on_key(c),
                 // KeyCode::Left => app.on_left(),
                 // KeyCode::Up => app.on_up(),
@@ -119,9 +151,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 // KeyCode::Down => app.on_down(),
                 _ => {}
             },
-            Event::Tick => {
-                break;
-            }
+            Event::Tick => {}
         }
 
         if should_quit {
@@ -129,8 +159,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // Load networks
-    let mut networks_status = init::get_file_status("");
 
     // Printout and start server
     if args.len() == 1 {
