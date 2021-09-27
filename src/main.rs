@@ -2,11 +2,9 @@ extern crate abode;
 extern crate tui;
 
 mod app;
-// mod extensions;
 mod header;
 
 use abode::init;
-use keycode::{KeyMap, KeyMappingId};
 use std::{
     env,
     error::Error,
@@ -16,15 +14,12 @@ use std::{
     time::{Duration, Instant},
 };
 use tui::backend::CrosstermBackend;
-use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Modifier, Style};
 use tui::Terminal;
 
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
 
 use abode::files::FileError;
 use abode::files::FileStatus;
-use abode::server::Server;
 use header::Header;
 
 use crate::app::App;
@@ -34,11 +29,7 @@ enum Event<I> {
     Tick,
 }
 
-// ISSUE: How do we pull in Keycodes? (I suggest what we are using for arranges)
-// ISSUE: Event handling
 fn main() -> Result<(), Box<dyn Error>> {
-    println!("Your humble Abode.");
-
     let args = read_args();
 
     // Time between ticks
@@ -48,7 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Do we quit?
     let should_quit = false;
 
-    let mut stdout = io::stdout();
+    let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 

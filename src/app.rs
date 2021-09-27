@@ -1,8 +1,8 @@
 use abode::network::Network;
 use tui::backend::Backend;
 use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Modifier, Style};
-use tui::widgets::{Block, Borders, List, ListItem, Widget};
+use tui::style::{Color, Style};
+use tui::widgets::{Block, Borders, List, ListItem};
 use tui::Terminal;
 
 use std::error::Error;
@@ -58,7 +58,9 @@ impl<'a> App<'a> {
                     .as_ref(),
                 )
                 .split(f.size());
-            let block = Block::default().title("Your Abode").borders(Borders::ALL);
+            let block = Block::default()
+                .title("Your Humble, Abode")
+                .borders(Borders::ALL);
             f.render_widget(block, chunks[0]);
 
             // Fill with networks
