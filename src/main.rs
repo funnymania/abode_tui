@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Whether unicode symbols are used
     let enhanced_graphics = true;
     // Do we quit?
-    let should_quit = false;
+    let mut should_quit = false;
 
     let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
@@ -87,16 +87,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         match rx.recv()? {
             Event::Input(event) => match event.code {
-                KeyCode::Char('j') => {
-                    app.move_down()
-                    // disable_raw_mode()?;
-                    // execute!(
-                    //     terminal.backend_mut(),
-                    //     LeaveAlternateScreen,
-                    //     DisableMouseCapture
-                    // )?;
-                    // terminal.show_cursor()?;
-                    // break;
+                KeyCode::Char('j') | KeyCode::Down => app.move_down(),
+                KeyCode::Char('k') | KeyCode::Up => app.move_up(),
+                KeyCode::Char('h') | KeyCode::Left => app.move_left(),
+                KeyCode::Char('l') | KeyCode::Right => app.move_right(),
+                KeyCode::Char('q') => {
+                    should_quit = true;
                 }
                 // KeyCode::Char(c) => app.on_key(c),
                 // KeyCode::Left => app.on_left(),

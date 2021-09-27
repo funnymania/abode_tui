@@ -1,8 +1,9 @@
 use abode::network::Network;
 use tui::backend::Backend;
-use tui::layout::{Constraint, Direction, Layout};
-use tui::style::{Color, Style};
-use tui::widgets::{Block, Borders, List, ListItem};
+use tui::layout::{Alignment, Constraint, Direction, Layout};
+use tui::style::{Color, Modifier, Style};
+use tui::text::{Span, Text};
+use tui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
 use tui::Terminal;
 
 use std::error::Error;
@@ -60,17 +61,39 @@ impl<'a> App<'a> {
                 .split(f.size());
             let block = Block::default()
                 .title("Your Humble, Abode")
-                .borders(Borders::ALL);
+                .borders(Borders::ALL)
+                .style(Style::default().fg(Color::Black).bg(Color::Magenta));
             f.render_widget(block, chunks[0]);
 
             // Fill with networks
             let list = self
                 .copy_list()
                 .block(Block::default().title("Loot").borders(Borders::ALL))
-                .style(Style::default().fg(Color::White));
-            // .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-            // .highlist_symbol(">>");
+                .style(Style::default().fg(Color::LightCyan).bg(Color::Magenta))
+                .highlight_style(
+                    Style::default()
+                        .fg(Color::Black)
+                        .add_modifier(Modifier::ITALIC | Modifier::BOLD),
+                )
+                .highlight_symbol(">>");
             f.render_widget(list, chunks[1]);
+
+            let demo_txt = Text::from(
+                "\n.-. .-. .  . .-.
+                |  )|-  |\\/| | |
+                `-' `-' '  ` `-' ",
+            );
+
+            let demo_paragraph = Paragraph::new(demo_txt)
+                .style(
+                    Style::default()
+                        .fg(Color::White)
+                        .bg(Color::Black)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .alignment(Alignment::Center)
+                .wrap(Wrap { trim: true });
+            f.render_widget(demo_paragraph, chunks[2]);
         })?;
 
         Ok(())
