@@ -2,6 +2,7 @@ extern crate abode;
 extern crate tui;
 
 mod app;
+// mod extensions;
 mod header;
 
 use abode::init;
@@ -16,14 +17,13 @@ use std::{
 };
 use tui::backend::CrosstermBackend;
 use tui::layout::{Constraint, Direction, Layout};
-use tui::widgets::{Block, Borders, Widget};
+use tui::style::{Color, Modifier, Style};
 use tui::Terminal;
-use tui::List;
+
+use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
 
 use abode::files::FileError;
-use abode::files::FileState;
 use abode::files::FileStatus;
-use abode::network::Network;
 use abode::server::Server;
 use header::Header;
 
@@ -36,7 +36,6 @@ enum Event<I> {
 
 // ISSUE: How do we pull in Keycodes? (I suggest what we are using for arranges)
 // ISSUE: Event handling
-
 fn main() -> Result<(), Box<dyn Error>> {
     println!("Your humble Abode.");
 
@@ -63,19 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut all_networks = Vec::new();
     match networks_status {
         FileStatus::Ok(nets) => {
-            for network in nets.iter() {
-                // println!("Network");
-                // println!("{} - {}", network.id(), network.name());
-                // println!("Peer Devices");
-                // if network.members().len() == 0 {
-                //     println!("None");
-                // }
-
-                // for device in network.members() {
-                //     println!("{}", device.id());
-                // }
-               all_networks.push(network); 
-            }
+            all_networks = Vec::from(nets);
         }
         FileStatus::Err(fe) => match fe {
             FileError::Other(msg) => panic!("{:?}", msg),
@@ -85,56 +72,34 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut app = App::new("Abode Demo", enhanced_graphics, all_networks);
 
     // Don't understand rn
-    // let tick_rate = Duration::from_millis(tick_rate);
-    // thread::spawn(move || {
-    //     let mut last_tick = Instant::now();
-    //     loop {
-    //         // poll for tick rate duration, if no events, sent tick event.
-    //         let timeout = tick_rate
-    //             .checked_sub(last_tick.elapsed())
-    //             .unwrap_or_else(|| Duration::from_secs(0));
-    //         if event::poll(timeout).unwrap() {
-    //             if let CEvent::Key(key) = event::read().unwrap() {
-    //                 tx.send(Event::Input(key)).unwrap();
-    //             }
-    //         }
-    //         if last_tick.elapsed() >= tick_rate {
-    //             tx.send(Event::Tick).unwrap();
-    //             last_tick = Instant::now();
-    //         }
-    //     }
-    // });
+    let tick_rate = Duration::from_millis(tick_rate);
+    thread::spawn(move || {
+        let mut last_tick = Instant::now();
+        loop {
+            // poll for tick rate duration, if no events, sent tick event.
+            let timeout = tick_rate
+                .checked_sub(last_tick.elapsed())
+                .unwrap_or_else(|| Duration::from_secs(0));
+            if event::poll(timeout).unwrap() {
+                if let CEvent::Key(key_event) = event::read().unwrap() {
+                    tx.send(Event::Input(key_event)).unwrap();
+                }
+            }
+            if last_tick.elapsed() >= tick_rate {
+                tx.send(Event::Tick).unwrap();
+                last_tick = Instant::now();
+            }
+        }
+    });
 
     // Static screen
     loop {
-        terminal.draw(|f| {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .margin(1)
-                .constraints(
-                    [
-                        Constraint::Percentage(10),
-                        Constraint::Percentage(80),
-                        Constraint::Percentage(10),
-                    ]
-                    .as_ref(),
-                )
-                .split(f.size());
-            let block = Block::default().title("Your Abode").borders(Borders::ALL);
-            f.render_widget(block, chunks[0]);
-
-            // Fill with networks
-            let list = app.list().block(Block::default().title("Loot").borders(Borders::ALL)
-                .style(Style::default().fg(Color::White))
-                .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-                .highlist_symbol(">>");
-            f.render_widget(list, chunks[1]);
-        })?;
+        app.draw(&mut terminal);
 
         match rx.recv()? {
-            Event::Input(event) => match event {
-                KeyMap::from(KeyMappingId::UsJ) -> {
-                    app.move_up()
+            Event::Input(event) => match event.code {
+                KeyCode::Char('j') => {
+                    app.move_down()
                     // disable_raw_mode()?;
                     // execute!(
                     //     terminal.backend_mut(),
@@ -159,66 +124,65 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-
     // Printout and start server
     if args.len() == 1 {
         // printout_networks(&mut networks_status);
     }
 
-    if args.len() > 1 {
-        match args[1].as_str() {
-            // Display network status
-            "view" => printout_networks(&mut networks_status),
-            // Add a new network to files, reload view
-            // "create" => {
-            //     if args.len() < 3 {
-            //         println!("create command requires name: create [name]");
-            //     } else {
-            //         let fresh = Network::new(&args[2]);
-            //         // Add network
-            //         networks_status.persist_network_to_file(fresh);
-            //     }
-            // }
-            "of" => {
-                if args.len() < 3 {
-                    println!("Whose abode do you want to crash?\nabode of serena\nTo see your own abode: abode of me");
-                } else {
-                    match args[2].as_str() {
-                        "me" => print_header(),
-                        _ => {
-                            // bring in a user's abode
-                            // Make request to another user:
-                            // 1. setup TCP with peer
-                            // 2. pull in header, and filetree
-                            // 3. put file tree in memory (as a tree)
-                            // 4. leave when finished
-                        }
-                    }
-                }
-            }
-            // Request file
-            "req" => {
-                if args.len() < 3 {
-                    println!("req command requires name: req [name]");
-                } else {
-                    Server::request_file(&args[2]);
-                }
-            }
-            // "send" => send_file_to_all_devices(&mut networks_status),
-            // Remove a network
-            "close" => {}
-            //TODO
-            // "invite" => {
-            //     if args.len() < 4 {
-            //         println!("invite command requires net_id and device name: invite UUID name");
-            //     }
-            //     add_to_network(&mut networks_status, &args[2], &args[3]);
-            // }
-            _ => {
-                println!("Commands available are 'view', 'create', 'req', and 'invite'");
-            }
-        }
-    }
+    // if args.len() > 1 {
+    //     match args[1].as_str() {
+    //         // Display network status
+    //         "view" => printout_networks(&mut networks_status),
+    //         // Add a new network to files, reload view
+    //         // "create" => {
+    //         //     if args.len() < 3 {
+    //         //         println!("create command requires name: create [name]");
+    //         //     } else {
+    //         //         let fresh = Network::new(&args[2]);
+    //         //         // Add network
+    //         //         networks_status.persist_network_to_file(fresh);
+    //         //     }
+    //         // }
+    //         "of" => {
+    //             if args.len() < 3 {
+    //                 println!("Whose abode do you want to crash?\nabode of serena\nTo see your own abode: abode of me");
+    //             } else {
+    //                 match args[2].as_str() {
+    //                     "me" => print_header(),
+    //                     _ => {
+    //                         // bring in a user's abode
+    //                         // Make request to another user:
+    //                         // 1. setup TCP with peer
+    //                         // 2. pull in header, and filetree
+    //                         // 3. put file tree in memory (as a tree)
+    //                         // 4. leave when finished
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         // Request file
+    //         "req" => {
+    //             if args.len() < 3 {
+    //                 println!("req command requires name: req [name]");
+    //             } else {
+    //                 Server::request_file(&args[2]);
+    //             }
+    //         }
+    //         // "send" => send_file_to_all_devices(&mut networks_status),
+    //         // Remove a network
+    //         "close" => {}
+    //         //TODO
+    //         // "invite" => {
+    //         //     if args.len() < 4 {
+    //         //         println!("invite command requires net_id and device name: invite UUID name");
+    //         //     }
+    //         //     add_to_network(&mut networks_status, &args[2], &args[3]);
+    //         // }
+    //         _ => {
+    //             println!("Commands available are 'view', 'create', 'req', and 'invite'");
+    //         }
+    //     }
+    // }
 
     Ok(())
 }
