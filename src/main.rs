@@ -62,7 +62,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut app = App::new("Abode Demo", enhanced_graphics, all_networks);
 
-    // Don't understand rn
     let tick_rate = Duration::from_millis(tick_rate);
     thread::spawn(move || {
         let mut last_tick = Instant::now();
@@ -83,7 +82,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
-    // Static screen
     loop {
         app.draw(&mut terminal);
 
