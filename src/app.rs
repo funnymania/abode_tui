@@ -166,7 +166,7 @@ impl<'a> App<'a> {
             Some(thing) => {
                 if self.view != View::Devices {
                     self.view = View::Devices;
-                    self.change_list(View::Networks, thing);
+                    self.change_list(View::Devices, thing);
                 }
             }
             None => (),

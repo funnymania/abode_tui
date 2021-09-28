@@ -17,6 +17,7 @@ use tui::backend::CrosstermBackend;
 use tui::Terminal;
 
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 use abode::files::FileError;
 use abode::files::FileStatus;
@@ -31,6 +32,8 @@ enum Event<I> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = read_args();
+
+    enable_raw_mode()?;
 
     // Time between ticks
     let tick_rate: u64 = 250;
@@ -92,6 +95,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 KeyCode::Char('h') | KeyCode::Left => app.move_left(),
                 KeyCode::Char('l') | KeyCode::Right => app.move_right(),
                 KeyCode::Char('q') => {
+                    disable_raw_mode()?;
                     terminal.show_cursor()?;
                     break;
                 }
