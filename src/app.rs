@@ -3,7 +3,7 @@ use tui::backend::Backend;
 use tui::layout::{Alignment, Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Text};
-use tui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
+use tui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
 use tui::Terminal;
 
 use std::error::Error;
@@ -14,7 +14,7 @@ pub struct App<'a> {
     list: List<'a>,
     pub list_len: usize,
     pub data: Vec<Network>,
-    pub cursor: usize,
+    pub list_state: ListState,
     pub view: View,
 }
 
@@ -31,18 +31,21 @@ impl<'a> App<'a> {
             ui_list.push(ListItem::new(network.name().clone()));
         }
 
+        let mut list_state = ListState::default();
+        list_state.select(Some(0));
+
         App {
             title: title.to_string(),
             enhanced_graphics,
             data: networks,
             list_len: ui_list.len(),
             list: List::new(ui_list),
-            cursor: 0,
+            list_state,
             view: View::Networks,
         }
     }
 
-    pub fn draw<B>(&self, terminal: &mut Terminal<B>) -> Result<(), Box<dyn Error>>
+    pub fn draw<B>(&mut self, terminal: &mut Terminal<B>) -> Result<(), Box<dyn Error>>
     where
         B: Backend,
     {
@@ -76,7 +79,7 @@ impl<'a> App<'a> {
                         .add_modifier(Modifier::ITALIC | Modifier::BOLD),
                 )
                 .highlight_symbol(">>");
-            f.render_widget(list, chunks[1]);
+            f.render_stateful_widget(list, chunks[1], &mut self.list_state);
 
             let demo_txt = Text::from(
                 "\n.-. .-. .  . .-.
@@ -125,28 +128,48 @@ impl<'a> App<'a> {
     }
 
     pub fn move_down(&mut self) {
-        if self.cursor != self.list_len - 1 {
-            self.cursor += 1
+        match self.list_state.selected() {
+            Some(place) => {
+                if place != self.list_len - 1 {
+                    self.list_state.select(Some(place + 1));
+                }
+            }
+            None => (),
         }
     }
 
     pub fn move_up(&mut self) {
-        if self.cursor != 0 {
-            self.cursor -= 1
+        match self.list_state.selected() {
+            Some(place) => {
+                if place != 0 {
+                    self.list_state.select(Some(place - 1));
+                }
+            }
+            None => (),
         }
     }
 
     pub fn move_left(&mut self) {
-        if self.view != View::Networks {
-            self.view = View::Networks;
-            self.change_list(View::Networks, self.cursor);
+        match self.list_state.selected() {
+            Some(thing) => {
+                if self.view != View::Networks {
+                    self.view = View::Networks;
+                    self.change_list(View::Networks, thing);
+                }
+            }
+            None => (),
         }
     }
 
     pub fn move_right(&mut self) {
-        if self.view != View::Devices {
-            self.view = View::Devices;
-            self.change_list(View::Devices, self.cursor);
+        match self.list_state.selected() {
+            Some(thing) => {
+                if self.view != View::Devices {
+                    self.view = View::Devices;
+                    self.change_list(View::Networks, thing);
+                }
+            }
+            None => (),
         }
     }
 }

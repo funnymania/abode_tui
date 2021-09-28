@@ -92,7 +92,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                 KeyCode::Char('h') | KeyCode::Left => app.move_left(),
                 KeyCode::Char('l') | KeyCode::Right => app.move_right(),
                 KeyCode::Char('q') => {
-                    should_quit = true;
+                    terminal.show_cursor()?;
+                    break;
                 }
                 // KeyCode::Char(c) => app.on_key(c),
                 // KeyCode::Left => app.on_left(),
