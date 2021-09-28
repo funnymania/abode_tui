@@ -1,3 +1,4 @@
+use crate::header::Header;
 use abode::network::Network;
 use tui::backend::Backend;
 use tui::layout::{Alignment, Constraint, Direction, Layout};
@@ -18,10 +19,9 @@ pub struct App<'a> {
     pub view: View,
 }
 
-#[derive(PartialEq)]
 pub enum View {
-    Networks,
-    Devices,
+    Networks(Header),
+    Devices(Header),
 }
 
 impl<'a> App<'a> {
@@ -41,7 +41,7 @@ impl<'a> App<'a> {
             list_len: ui_list.len(),
             list: List::new(ui_list),
             list_state,
-            view: View::Networks,
+            view: View::Networks(Header::new()),
         }
     }
 
@@ -62,11 +62,17 @@ impl<'a> App<'a> {
                     .as_ref(),
                 )
                 .split(f.size());
-            let block = Block::default()
-                .title("Your Humble, Abode")
-                .borders(Borders::ALL)
-                .style(Style::default().fg(Color::Black).bg(Color::Magenta));
-            f.render_widget(block, chunks[0]);
+            match &self.view {
+                View::Networks(header) | View::Devices(header) => {
+                    let block = Paragraph::new(header.content()).block(
+                        Block::default()
+                            .title("Your Humble, Abode")
+                            .borders(Borders::ALL)
+                            .style(Style::default().fg(Color::Black).bg(Color::Magenta)),
+                    );
+                    f.render_widget(block, chunks[0]);
+                }
+            }
 
             // Fill with networks
             let list = self
@@ -104,16 +110,16 @@ impl<'a> App<'a> {
 
     /// Index.0 is a code which says which list to displayy
     /// Change list to represent what is expected given 'view'
-    pub fn change_list(&mut self, view: View, index: usize) {
-        match view {
-            View::Networks => {
+    pub fn change_list(&mut self, index: usize) {
+        match self.view {
+            View::Networks(_) => {
                 let mut ui_list = Vec::new();
                 for network in self.data.iter() {
                     ui_list.push(ListItem::new(network.name().clone()));
                 }
                 self.list = List::new(ui_list);
             }
-            View::Devices => {
+            View::Devices(_) => {
                 let mut ui_list = Vec::new();
                 for device in self.data[index].members() {
                     ui_list.push(ListItem::new(device.name().clone()));
@@ -152,9 +158,9 @@ impl<'a> App<'a> {
     pub fn move_left(&mut self) {
         match self.list_state.selected() {
             Some(thing) => {
-                if self.view != View::Networks {
-                    self.view = View::Networks;
-                    self.change_list(View::Networks, thing);
+                if let View::Devices(header) = &self.view {
+                    self.view = View::Networks(header.clone());
+                    self.change_list(thing);
                 }
             }
             None => (),
@@ -164,9 +170,9 @@ impl<'a> App<'a> {
     pub fn move_right(&mut self) {
         match self.list_state.selected() {
             Some(thing) => {
-                if self.view != View::Devices {
-                    self.view = View::Devices;
-                    self.change_list(View::Devices, thing);
+                if let View::Networks(header) = &self.view {
+                    self.view = View::Devices(header.clone());
+                    self.change_list(thing);
                 }
             }
             None => (),

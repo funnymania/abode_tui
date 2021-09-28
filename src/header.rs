@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::Read;
 
+#[derive(Clone)]
 pub struct Header {
     content: String,
 }
@@ -16,7 +17,7 @@ impl Header {
             .read(true)
             .write(true)
             .open(file_path)
-            .unwrap();
+            .unwrap(); //UNHANDLED ERROR
         let mut content = String::new();
         file.read_to_string(&mut content);
 
