@@ -12,4 +12,4 @@ keycode = "0.3.0"
 tui = { version = "0.16", default-features = false, features = ['crossterm'] }
 
 [dependencies.abode]
-path = "../network"
+path = "../abode"
