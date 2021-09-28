@@ -78,10 +78,10 @@ impl<'a> App<'a> {
             let list = self
                 .copy_list()
                 .block(Block::default().title("Loot").borders(Borders::ALL))
-                .style(Style::default().fg(Color::LightCyan).bg(Color::Magenta))
+                .style(Style::default().fg(Color::Black).bg(Color::Magenta))
                 .highlight_style(
                     Style::default()
-                        .fg(Color::Black)
+                        .fg(Color::Yellow)
                         .add_modifier(Modifier::ITALIC | Modifier::BOLD),
                 )
                 .highlight_symbol(">>");
@@ -90,7 +90,7 @@ impl<'a> App<'a> {
             let demo_txt = Text::from(
                 "\n.-. .-. .  . .-.
                 |  )|-  |\\/| | |
-                `-' `-' '  ` `-' ",
+                `-' `-' '  ' `-' ",
             );
 
             let demo_paragraph = Paragraph::new(demo_txt)
