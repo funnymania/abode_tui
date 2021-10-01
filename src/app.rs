@@ -184,7 +184,7 @@ impl<'a> App<'a> {
                         .highlight_symbol(">>");
                     f.render_stateful_widget(list, pop_chunks[1], &mut self.list_state);
 
-                    //TODO: Layout of HALF for each
+                    //TODO: Button state
                     let button_y = Paragraph::new(dialog.options.0.clone())
                         .block(Block::default().borders(Borders::ALL));
                     f.render_widget(button_y, options[0]);
