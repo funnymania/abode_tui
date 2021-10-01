@@ -160,6 +160,11 @@ impl<'a> App<'a> {
                         )
                         .split(area); // Rect area? vs frame size?
 
+                    let options = Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                        .split(pop_chunks[2]);
+
                     let block = Paragraph::new(format!("{}", dialog.content)).block(
                         Block::default()
                             .title(format!("{}", dialog.title))
@@ -171,7 +176,6 @@ impl<'a> App<'a> {
                     let list = self
                         .copy_list()
                         .block(Block::default().borders(Borders::ALL))
-                        .style(Style::default().fg(Color::Black).bg(Color::Magenta))
                         .highlight_style(
                             Style::default()
                                 .fg(Color::Yellow)
@@ -183,10 +187,10 @@ impl<'a> App<'a> {
                     //TODO: Layout of HALF for each
                     let button_y = Paragraph::new(dialog.options.0.clone())
                         .block(Block::default().borders(Borders::ALL));
-                    f.render_widget(button_y, pop_chunks[2]);
+                    f.render_widget(button_y, options[0]);
                     let button_n = Paragraph::new(dialog.options.1.clone())
                         .block(Block::default().borders(Borders::ALL));
-                    f.render_widget(button_n, pop_chunks[2]);
+                    f.render_widget(button_n, options[1]);
                 }
                 None => {}
             }
