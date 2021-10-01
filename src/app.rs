@@ -142,15 +142,51 @@ impl<'a> App<'a> {
             //Is there a popup to render?
             match &self.dialog {
                 Some(dialog) => {
+                    // Layout of Block, with Paragraph top 20%,
+                    // List middle 60%, options bottom 20%
+                    let area = App::centered_rect(60, 40, f.size());
+
+                    // Rect: 60, 20, f.size()
+                    // 2D Layouts?
+                    let pop_chunks = Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints(
+                            [
+                                Constraint::Percentage(20),
+                                Constraint::Percentage(60),
+                                Constraint::Percentage(20),
+                            ]
+                            .as_ref(),
+                        )
+                        .split(area); // Rect area? vs frame size?
+
                     let block = Paragraph::new(format!("{}", dialog.content)).block(
                         Block::default()
                             .title(format!("{}", dialog.title))
                             .borders(Borders::ALL),
                     );
 
-                    let area = App::centered_rect(60, 20, f.size());
                     f.render_widget(Clear, area); //this clears out the background
-                    f.render_widget(block, area);
+                    f.render_widget(block, pop_chunks[0]);
+                    let list = self
+                        .copy_list()
+                        .block(Block::default().borders(Borders::ALL))
+                        .style(Style::default().fg(Color::Black).bg(Color::Magenta))
+                        .highlight_style(
+                            Style::default()
+                                .fg(Color::Yellow)
+                                .add_modifier(Modifier::ITALIC | Modifier::BOLD),
+                        )
+                        .highlight_symbol(">>");
+                    f.render_stateful_widget(list, pop_chunks[1], &mut self.list_state);
+
+                    //TODO: Layout of HALF for each
+                    let button_y = Paragraph::new(dialog.options.0.clone())
+                        .block(Block::default().borders(Borders::ALL));
+                    f.render_widget(button_y, pop_chunks[2]);
+                    let button_n = Paragraph::new(dialog.options.1.clone())
+                        .block(Block::default().borders(Borders::ALL));
+                    f.render_widget(button_n, pop_chunks[2]);
                 }
                 None => {}
             }
@@ -159,49 +195,30 @@ impl<'a> App<'a> {
         Ok(())
     }
 
-    /// Index.0 is a code which says which list to displayy
     /// Change list to represent what is expected given 'view'
     pub fn change_list(&mut self, index: usize) {
         match self.view {
             View::Networks(_) => {
-                //RemoveDevice dialog
-                if index == self.data.len() - 1 {
+                let mut ui_list = Vec::new();
+                for network in self.data.iter() {
+                    ui_list.push(ListItem::new(network.name().clone()));
                 }
-                //AddDevice dialog
-                else if index == self.data.len() - 2 {
-                }
-                //List networks
-                else {
-                    let mut ui_list = Vec::new();
-                    for network in self.data.iter() {
-                        ui_list.push(ListItem::new(network.name().clone()));
-                    }
 
-                    // Last items in list are for adding and removing
-                    ui_list.push(ListItem::new("+ add network"));
-                    ui_list.push(ListItem::new("- remove network"));
-                    self.list = List::new(ui_list);
-                }
+                // Last items in list are for adding and removing
+                ui_list.push(ListItem::new("+ add network"));
+                ui_list.push(ListItem::new("- remove network"));
+                self.list = List::new(ui_list);
             }
             View::Devices(_) => {
-                //RemoveNetwork dialog
-                if index == self.data.len() - 1 {
+                let mut ui_list = Vec::new();
+                for device in self.data[index].members() {
+                    ui_list.push(ListItem::new(device.name().clone()));
                 }
-                //AddNetwork dialog
-                else if index == self.data.len() - 2 {
-                }
-                //List devices
-                else {
-                    let mut ui_list = Vec::new();
-                    for device in self.data[index].members() {
-                        ui_list.push(ListItem::new(device.name().clone()));
-                    }
 
-                    // Last items in list are for adding and removing
-                    ui_list.push(ListItem::new("+ add device"));
-                    ui_list.push(ListItem::new("- remove device"));
-                    self.list = List::new(ui_list);
-                }
+                // Last items in list are for adding and removing
+                ui_list.push(ListItem::new("+ add device"));
+                ui_list.push(ListItem::new("- remove device"));
+                self.list = List::new(ui_list);
             }
         }
     }
@@ -244,12 +261,26 @@ impl<'a> App<'a> {
         }
     }
 
+    //RightArrow, L, Enter
     pub fn move_right(&mut self) {
         match self.list_state.selected() {
             Some(thing) => {
                 if let View::Networks(header) = &self.view {
-                    self.view = View::Devices(header.clone());
-                    self.change_list(thing);
+                    //RemoveDevice dialog
+                    if thing == self.data.len() + 1 {
+                        self.dialog = Some(Dialog::new(
+                            "Remove Network",
+                            format!("Which network would you like to remove?"),
+                        ));
+                    }
+                    //AddDevice dialog
+                    else if thing == self.data.len() {
+                    }
+                    //List networks
+                    else {
+                        self.view = View::Devices(header.clone());
+                        self.change_list(thing);
+                    }
                 }
             }
             None => (),
