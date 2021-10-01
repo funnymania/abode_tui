@@ -2,6 +2,7 @@ extern crate abode;
 extern crate tui;
 
 mod app;
+mod dialog;
 mod header;
 
 use abode::init;

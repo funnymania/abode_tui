@@ -1,10 +1,11 @@
+use crate::dialog::Dialog;
 use crate::header::Header;
 use abode::network::Network;
 use tui::backend::Backend;
-use tui::layout::{Alignment, Constraint, Direction, Layout};
+use tui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Text};
-use tui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
+use tui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap};
 use tui::Terminal;
 
 use std::error::Error;
@@ -17,6 +18,7 @@ pub struct App<'a> {
     pub data: Vec<Network>,
     pub list_state: ListState,
     pub view: View,
+    dialog: Option<Dialog>,
 }
 
 pub enum View {
@@ -31,6 +33,9 @@ impl<'a> App<'a> {
             ui_list.push(ListItem::new(network.name().clone()));
         }
 
+        ui_list.push(ListItem::new("+ add network"));
+        ui_list.push(ListItem::new("- remove network"));
+
         let mut list_state = ListState::default();
         list_state.select(Some(0));
 
@@ -42,7 +47,36 @@ impl<'a> App<'a> {
             list: List::new(ui_list),
             list_state,
             view: View::Networks(Header::new()),
+            dialog: None,
         }
+    }
+
+    /// helper function to create a centered rect using up
+    /// certain percentage of the available rect `r`
+    pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+        let popup_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(
+                [
+                    Constraint::Percentage((100 - percent_y) / 2),
+                    Constraint::Percentage(percent_y),
+                    Constraint::Percentage((100 - percent_y) / 2),
+                ]
+                .as_ref(),
+            )
+            .split(r);
+
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(
+                [
+                    Constraint::Percentage((100 - percent_x) / 2),
+                    Constraint::Percentage(percent_x),
+                    Constraint::Percentage((100 - percent_x) / 2),
+                ]
+                .as_ref(),
+            )
+            .split(popup_layout[1])[1]
     }
 
     pub fn draw<B>(&mut self, terminal: &mut Terminal<B>) -> Result<(), Box<dyn Error>>
@@ -62,6 +96,7 @@ impl<'a> App<'a> {
                     .as_ref(),
                 )
                 .split(f.size());
+
             match &self.view {
                 View::Networks(header) | View::Devices(header) => {
                     let block = Paragraph::new(header.content()).block(
@@ -103,6 +138,22 @@ impl<'a> App<'a> {
                 .alignment(Alignment::Center)
                 .wrap(Wrap { trim: true });
             f.render_widget(demo_paragraph, chunks[2]);
+
+            //Is there a popup to render?
+            match &self.dialog {
+                Some(dialog) => {
+                    let block = Paragraph::new(format!("{}", dialog.content)).block(
+                        Block::default()
+                            .title(format!("{}", dialog.title))
+                            .borders(Borders::ALL),
+                    );
+
+                    let area = App::centered_rect(60, 20, f.size());
+                    f.render_widget(Clear, area); //this clears out the background
+                    f.render_widget(block, area);
+                }
+                None => {}
+            }
         })?;
 
         Ok(())
@@ -113,18 +164,44 @@ impl<'a> App<'a> {
     pub fn change_list(&mut self, index: usize) {
         match self.view {
             View::Networks(_) => {
-                let mut ui_list = Vec::new();
-                for network in self.data.iter() {
-                    ui_list.push(ListItem::new(network.name().clone()));
+                //RemoveDevice dialog
+                if index == self.data.len() - 1 {
                 }
-                self.list = List::new(ui_list);
+                //AddDevice dialog
+                else if index == self.data.len() - 2 {
+                }
+                //List networks
+                else {
+                    let mut ui_list = Vec::new();
+                    for network in self.data.iter() {
+                        ui_list.push(ListItem::new(network.name().clone()));
+                    }
+
+                    // Last items in list are for adding and removing
+                    ui_list.push(ListItem::new("+ add network"));
+                    ui_list.push(ListItem::new("- remove network"));
+                    self.list = List::new(ui_list);
+                }
             }
             View::Devices(_) => {
-                let mut ui_list = Vec::new();
-                for device in self.data[index].members() {
-                    ui_list.push(ListItem::new(device.name().clone()));
+                //RemoveNetwork dialog
+                if index == self.data.len() - 1 {
                 }
-                self.list = List::new(ui_list);
+                //AddNetwork dialog
+                else if index == self.data.len() - 2 {
+                }
+                //List devices
+                else {
+                    let mut ui_list = Vec::new();
+                    for device in self.data[index].members() {
+                        ui_list.push(ListItem::new(device.name().clone()));
+                    }
+
+                    // Last items in list are for adding and removing
+                    ui_list.push(ListItem::new("+ add device"));
+                    ui_list.push(ListItem::new("- remove device"));
+                    self.list = List::new(ui_list);
+                }
             }
         }
     }
