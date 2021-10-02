@@ -1,5 +1,6 @@
 use crate::dialog::Dialog;
 use crate::header::Header;
+use crate::inputtext::InputText;
 use abode::network::Network;
 use tui::backend::Backend;
 use tui::layout::{Alignment, Constraint, Direction, Layout, Rect};
@@ -173,6 +174,7 @@ impl<'a> App<'a> {
 
                     f.render_widget(Clear, area); //this clears out the background
                     f.render_widget(block, pop_chunks[0]);
+                    //TODO: Remove add/remove listitems (last 2) for display
                     let list = self
                         .copy_list()
                         .block(Block::default().borders(Borders::ALL))
@@ -270,17 +272,41 @@ impl<'a> App<'a> {
         match self.list_state.selected() {
             Some(thing) => {
                 if let View::Networks(header) = &self.view {
-                    //RemoveDevice dialog
+                    //RemoveNetwork dialog
                     if thing == self.data.len() + 1 {
                         self.dialog = Some(Dialog::new(
                             "Remove Network",
                             format!("Which network would you like to remove?"),
                         ));
                     }
-                    //AddDevice dialog
+                    //AddNetwork dialog
                     else if thing == self.data.len() {
+                        self.dialog =
+                            Some(Dialog::new("Add Network", format!("What's their name?")));
                     }
                     //List networks
+                    else {
+                        self.view = View::Devices(header.clone());
+                        self.change_list(thing);
+                    }
+                } else if let View::Devices(header) = &self.view {
+                    //TODO: This is coming out '2' should be '1'
+                    //EXPLAIN: self.data is a vec of networks,
+                    //self.data[index] is the vec of devices
+                    println!("{}", self.data.len());
+                    //RemoveDevice dialog
+                    if thing == self.data.len() + 1 {
+                        self.dialog = Some(Dialog::new(
+                            "Remove Device",
+                            format!("Which device would you like to remove?"),
+                        ));
+                    }
+                    //AddDevice dialog
+                    else if thing == self.data.len() {
+                        self.dialog =
+                            Some(Dialog::new("Add Device", format!("What's their name?")));
+                    }
+                    //TODO: Bring in abode!
                     else {
                         self.view = View::Devices(header.clone());
                         self.change_list(thing);

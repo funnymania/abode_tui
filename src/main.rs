@@ -4,6 +4,7 @@ extern crate tui;
 mod app;
 mod dialog;
 mod header;
+mod inputtext;
 
 use abode::init;
 use std::{

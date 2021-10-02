@@ -1,9 +1,11 @@
+//TODO: Dialog (actually perhaps any UI Element) should have its own layout associated with it
+//TODO: Dialog should possibly be a trait.
 pub struct Dialog {
     pub title: String,
     pub content: String,
     pub options: (String, String),
 }
-//TODO Dialog needs buttons
+
 impl Dialog {
     pub fn new(title: &str, content: String) -> Dialog {
         Dialog {
